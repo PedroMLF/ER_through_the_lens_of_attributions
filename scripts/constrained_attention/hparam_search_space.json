@@ -1,0 +1,9 @@
+{
+    "search_space": {
+      "train_batch_size": [32],
+      "learning_rate": [2e-5, 3e-5, 5e-5],
+      "max_epochs": [25],
+      "lambda_annotation_loss": [0.0],
+      "constrained_learning_rate": [1e-1, 5e-2]
+    }
+}
