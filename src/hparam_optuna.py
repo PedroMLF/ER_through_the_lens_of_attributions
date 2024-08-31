@@ -14,8 +14,9 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from src.approach import BaseModelModule, ModelModule
+from src.approach import BaseModelModule, ModelModule, IxGModule
 from src.approach import DataModule
+from src.ptl_trainer import Trainer as pl_trainer
 
 
 def objective(trial, seed, metric_to_select, metric_to_early_stop, save_dir):
@@ -44,7 +45,12 @@ def objective(trial, seed, metric_to_select, metric_to_early_stop, save_dir):
     datamodule = DataModule(args)
     datamodule.prepare_data(stage="fit")
 
-    model = ModelModule(args)
+    # Get the right model class
+    if args.attention_type == "IxG":
+        model_module = IxGModule
+    else:
+        model_module = ModelModule
+    model = model_module(args)
 
     # Define save_dir and experiment_name
     #save_dir = "optuna_hparam_search_folder"
@@ -85,7 +91,7 @@ def objective(trial, seed, metric_to_select, metric_to_early_stop, save_dir):
     else:
         callbacks = [early_stop_callback, checkpoint_callback]
 
-    trainer = pl.Trainer(
+    trainer = pl_trainer(
         accelerator="auto",
         callbacks=callbacks,
         deterministic=True,
@@ -96,6 +102,7 @@ def objective(trial, seed, metric_to_select, metric_to_early_stop, save_dir):
         num_sanity_val_steps=0,
         profiler=None,
         enable_checkpointing=False if args.constrained_optimization else True,
+        inference_mode=False if args.attention_type == "IxG" else True,
     )
 
     trainer.fit(model, datamodule=datamodule)

@@ -7,10 +7,12 @@ from collections import defaultdict, Counter
 from functools import partial
 from glob import glob
 
+import captum
 import numpy as np
 import joblib
 import pytorch_lightning as pl
 import torch
+from captum._utils.common import _run_forward
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import f1_score
 from torch.distributions import Categorical
@@ -21,7 +23,7 @@ from transformers import get_linear_schedule_with_warmup
 
 from src.modeling_big_bird import BigBirdForSequenceClassification
 from src.trainer import Trainer
-from src.utils import print_sep
+from src.utils import load_hparams, print_sep
 
 
 class DataModule(pl.LightningDataModule):
@@ -242,7 +244,8 @@ class BaseModelModule(pl.LightningModule):
                 key = "annotation"
             self.log("loss_bounded_difference", output[f"loss_{key}"] - self.margin_cl.item())
         if "entropy_attributions" in output:
-            self.log("entropy_attributions", output["entropy_attributions"])
+            if output["entropy_attributions"]:
+                self.log("entropy_attributions", output["entropy_attributions"])
 
         if not self.automatic_optimization:
             self.manual_backward(output["loss"])
@@ -579,7 +582,7 @@ class ModelModule(BaseModelModule):
             raise ValueError(f"Invalid --head_aggregation_method {args.head_aggregation_method}")
 
         # Assert attention type is valid
-        if args.attention_type not in ["top_layer", "rollout_top_layer", "all_layers"]:        
+        if args.attention_type not in ["top_layer", "rollout_top_layer", "all_layers", "IxG"]:        
             raise ValueError(f"Invalid --attention_type {args.attention_type}")
 
         if args.attention_type in ["rollout_top_layer", "all_layers"] and args.head_aggregation_method == "none":
@@ -636,7 +639,7 @@ class ModelModule(BaseModelModule):
             loss_annotation = torch.tensor(0.0, device=loss_ce.device)
         else:
             # Compute attributions
-            attrs = self.compute_attributions(batch=batch, output=output)
+            attrs = self.compute_attributions(batch=batch, output=output, forward_inputs=forward_inputs)
             loss_annotation = self.compute_annotation_loss(attrs=attrs, batch=batch)
 
         # Build output dictionary
@@ -665,7 +668,10 @@ class ModelModule(BaseModelModule):
             #output_dict["loss_constrained_multiplier"] = self.loss_constraint._multiplier.detach().item()
 
         if "annotation_targets" in batch:
-            output_dict["entropy_attributions"] = Categorical(attrs).entropy().mean().detach()
+            try:
+                output_dict["entropy_attributions"] = Categorical(attrs).entropy().mean().detach()
+            except:
+                output_dict["entropy_attributions"] = None
 
         # Get predictions
         if not is_train:
@@ -707,7 +713,7 @@ class ModelModule(BaseModelModule):
 
         return output_dict
 
-    def compute_attributions(self, batch, output):
+    def compute_attributions(self, batch, output, forward_inputs):
         if self.head_aggregation_method == "none":
             if self.attention_type == "top_layer":
                 # Get attention weights to be supervised
@@ -740,6 +746,12 @@ class ModelModule(BaseModelModule):
                     attentions_to_supervise = torch.stack(output["attentions"], dim=1).mean(dim=(1, 2))
                     attrs = attentions_to_supervise[:, 0]
 
+                elif self.attention_type == "IxG":
+                    attrs = self.forward_IxG(labels=batch["labels"], **forward_inputs)["attributions"]
+                    attrs = attrs * self.attr_scaling
+                    attrs = attrs.sigmoid()
+                    attrs = attrs * batch["attention_mask"]
+
                 # NOTE: This copies:
                 # https://github.com/INK-USC/ER-Test/blob/HEAD/src/utils/losses.py#L16
                 # https://github.com/INK-USC/ER-Test/blob/HEAD/src/utils/losses.py#L27-L28
@@ -754,15 +766,18 @@ class ModelModule(BaseModelModule):
     def compute_annotation_loss(self, attrs, batch):
         # Build annotation targets
         annotation_targets = batch["annotation_targets"].float()
-        annotation_targets_denominator = torch.sum(annotation_targets, dim=1)
-        # Some entries might not have highlighted words. We solve that issue in the denominator, but don't
-        # calculate the loss for those cases, by zero-ing out those values in the sum
-        annotation_loss_mask = (annotation_targets_denominator != 0).int()
-        annotation_targets_denominator[annotation_targets_denominator == 0] = 1
-        annotation_targets /= annotation_targets_denominator.unsqueeze(-1)
+        if self.attention_type != "IxG":
+            annotation_targets_denominator = torch.sum(annotation_targets, dim=1)
+            # Some entries might not have highlighted words. We solve that issue in the denominator, but don't
+            # calculate the loss for those cases, by zero-ing out those values in the sum
+            annotation_loss_mask = (annotation_targets_denominator != 0).int()
+            annotation_targets_denominator[annotation_targets_denominator == 0] = 1
+            annotation_targets /= annotation_targets_denominator.unsqueeze(-1)
 
-        # We want to exclude the cases that have no higlights for either premise or hypothesis
-        annotation_loss_mask *= batch["annotation_keep_loss"]
+            # We want to exclude the cases that have no higlights for either premise or hypothesis
+            annotation_loss_mask *= batch["annotation_keep_loss"]
+        else:
+            annotation_loss_mask = torch.ones(annotation_targets.shape[0], device=annotation_targets.device)
 
         # Compute annotation loss
         if self.head_aggregation_method == "none":
@@ -831,8 +846,57 @@ class ModelModule(BaseModelModule):
         return joint_attentions
 
 
-def main(args, model_module):
+class IxGModule(ModelModule):
+
+    def __init__(self, args):
+        super().__init__(args)
+
+        self.method = captum.attr.InputXGradient(self.forward_captum)
+        self.method.gradient_func = self.compute_gradients
+
+    # This is the same as the default compute_gradients function in captum._utils.gradient, except
+    # setting create_graph=True when calling torch.autograd.grad
+    # SOURCE: https://github.com/pytorch/captum/issues/652
+    def compute_gradients(self, forward_fn, inputs, target_ind = None, additional_forward_args = None):
+        with torch.autograd.set_grad_enabled(True):
+            # runs forward pass
+            outputs = _run_forward(forward_fn, inputs, target_ind, additional_forward_args)
+            assert outputs[0].numel() == 1, (
+                "Target not provided when necessary, cannot take gradient with respect to multiple outputs."
+            )
+            grads = torch.autograd.grad(torch.unbind(outputs), inputs, create_graph=True)
+
+        return grads
+
+    def forward_IxG(self, inputs_embeds, attention_mask, token_type_ids, labels):
+        attributions = self.method.attribute(
+            inputs=inputs_embeds.requires_grad_(),
+            additional_forward_args=(attention_mask, token_type_ids),
+            target=labels,
+        )
+
+        # Normalize attributions
+        attributions_sum = attributions.sum(-1).squeeze()
+        #attributions_sum = attributions_sum / torch.norm(attributions_sum, dim=-1).unsqueeze(-1)
+
+        return {"attributions": attributions_sum}
+
+
+def main(args):
     pl.seed_everything(args.random_seed)
+
+    # Get the right model class
+    # With eval/predict we would only get the original args after loading the model
+    # But we need them before, to load the correct model module. So we read from hparams.
+    if not (args.predict or args.eval):
+        attn_type = args.attention_type
+    else:
+        if ".ckpt" in args.checkpoint_path:
+            hparam_path = os.path.dirname(args.checkpoint_path)
+        else:
+            hparam_path = os.path.join(args.checkpoint_path, "version_0")
+        attn_type = load_hparams(os.path.join(hparam_path, "hparams.yaml"))['attention_type']
+    model_module = IxGModule if attn_type == "IxG" else ModelModule
 
     if not (args.predict or args.eval):
         if args.checkpoint_path:
@@ -843,7 +907,7 @@ def main(args, model_module):
             model = model_module(args)
         data = DataModule(args)
         data.prepare_data(stage="fit")
-        trainer = Trainer(args, stage="fit").trainer
+        trainer = Trainer(args, stage="fit", attn_type=attn_type).trainer
 
         # Train model
         trainer.fit(model, data)
@@ -868,7 +932,7 @@ def main(args, model_module):
         data = DataModule(args)
         data.prepare_data("eval")
 
-        trainer = Trainer(args, stage="eval").trainer
+        trainer = Trainer(args, stage="eval", attn_type=attn_type).trainer
 
         # Find all checkpoint and sort by version
         if ".ckpt" in args.checkpoint_path:
@@ -891,7 +955,7 @@ def main(args, model_module):
         data = DataModule(args)
         data.prepare_data(stage="predict")
 
-        trainer = Trainer(args, stage="predict").trainer
+        trainer = Trainer(args, stage="predict", attn_type=attn_type).trainer
         results = trainer.predict(model, dataloaders=data)
 
         # Concat all logits and get predictions
@@ -971,4 +1035,4 @@ if __name__ == "__main__":
     if not args.eval and not args.predict:
         print(f"ARGS:\n{args}\n")
 
-    main(args, ModelModule)
+    main(args)

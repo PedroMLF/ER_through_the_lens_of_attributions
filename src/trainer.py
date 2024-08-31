@@ -6,9 +6,11 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
+from src.ptl_trainer import Trainer as pl_trainer
+
 
 class Trainer:
-    def __init__(self, args, stage):
+    def __init__(self, args, stage, attn_type):
 
         if stage == "fit":
             # Define logger
@@ -63,21 +65,23 @@ class Trainer:
                 'profiler': None,
                 'val_check_interval': args.val_check_interval,
                 'enable_checkpointing': False if args.constrained_optimization else True,
+                'inference_mode': False if attn_type == "IxG" else True,
             }
             if not args.constrained_optimization:
                 trainer_kwargs['gradient_clip_val'] = args.gradient_clip_val
 
-            self.trainer = pl.Trainer(**trainer_kwargs)
+            self.trainer = pl_trainer(**trainer_kwargs)
 
         else:
             # Set minimal pytorch lightning trainer for eval/predict
-            self.trainer = pl.Trainer(
+            self.trainer = pl_trainer(
                 deterministic=True,
                 enable_progress_bar=args.enable_progress_bar,
                 gpus=args.gpus,
                 logger=None,
                 profiler=None,
                 precision=32,
+                inference_mode=False if attn_type == "IxG" else True,
             )
 
     @staticmethod
