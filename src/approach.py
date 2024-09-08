@@ -748,8 +748,7 @@ class ModelModule(BaseModelModule):
 
                 elif self.attention_type == "IxG":
                     attrs = self.forward_IxG(labels=batch["labels"], **forward_inputs)["attributions"]
-                    attrs = attrs * self.attr_scaling
-                    attrs = attrs.sigmoid()
+                    attrs = attrs.abs()
                     attrs = attrs * batch["attention_mask"]
 
                 # NOTE: This copies:
@@ -877,7 +876,7 @@ class IxGModule(ModelModule):
 
         # Normalize attributions
         attributions_sum = attributions.sum(-1).squeeze()
-        #attributions_sum = attributions_sum / torch.norm(attributions_sum, dim=-1).unsqueeze(-1)
+        attributions_sum = attributions_sum / torch.norm(attributions_sum, dim=-1).unsqueeze(-1)
 
         return {"attributions": attributions_sum}
 
