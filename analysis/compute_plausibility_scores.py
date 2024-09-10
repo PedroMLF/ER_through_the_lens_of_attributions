@@ -22,10 +22,13 @@ def load_results(base_path, fn):
         'BS': f"{base_path}/baseline/train/{fn}",
         'ER-A': f"{base_path}/joint_attention/train/{fn}",
         'ER-R': f"{base_path}/joint_rollout/train/{fn}",
+        'ER-IxG': f"{base_path}/joint_ixg_norm/train/{fn}",
         'ER-C-A': f"{base_path}/constrained_attention/train/{fn}",
         'ER-C-R': f"{base_path}/constrained_rollout/train/{fn}",
+        'ER-C-IxG': f"{base_path}/constrained_ixg_norm/train/{fn}",
         'L-EXP_A': f"{base_path}/constrained_attention/find_bound/{fn}",
         'L-EXP_R': f"{base_path}/constrained_rollout/find_bound//{fn}",
+        'L-EXP_IxG': f"{base_path}/constrained_ixg_norm/find_bound/{fn}",
     }
 
     results = {k:joblib.load(v) for k, v in tqdm(analysis_data_path.items())}
@@ -121,10 +124,13 @@ def aggregate_and_print_results(df):
         ('BS', '\\textbf{Baseline}'),
         ('ER-A', '\\textbf{ER + Att}'),
         ('ER-R', '\\textbf{ER + AttR}'), 
+        ('ER-IxG', '\\textbf{ER + IxG}'), 
         ('ER-C-A', '\\textbf{ER-C + Att}'),
         ('ER-C-R', '\\textbf{ER-C + AttR}'),
+        ('ER-C-IxG', '\\textbf{ER-C + IxG}'),
         ('L-EXP_A','$\\mathcal L_{\\text{expl}}$ (A)'),
-        ('L-EXP_R','$\\mathcal L_{\\text{expl}}$ (R)')
+        ('L-EXP_R','$\\mathcal L_{\\text{expl}}$ (R)'),
+        ('L-EXP_IxG','$\\mathcal L_{\\text{expl}}$ (IxG)'),
     ]
 
     # Filter non existing strategies

@@ -22,10 +22,10 @@ def load_results(base_path, fn):
         'BS': f"{base_path}/baseline/train/{fn}",
         'ER-A': f"{base_path}/joint_attention/train/{fn}",
         'ER-R': f"{base_path}/joint_rollout/train/{fn}",
+        'ER-IxG': f"{base_path}/joint_ixg_norm/train/{fn}",
         'ER-C-A': f"{base_path}/constrained_attention/train/{fn}",
         'ER-C-R': f"{base_path}/constrained_rollout/train/{fn}",
-        #'L-EXP_A': f"{base_path}/constrained_attention/find_bound/{fn}",
-        #'L-EXP_R': f"{base_path}/constrained_rollout/find_bound//{fn}",
+        'ER-C-IxG': f"{base_path}/constrained_ixg_norm/train/{fn}",
     }
 
     results = {k:joblib.load(v) for k, v in tqdm(analysis_data_path.items())}
