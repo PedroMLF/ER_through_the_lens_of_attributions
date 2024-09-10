@@ -22,8 +22,10 @@ def main():
         'Baseline': f'outputs/baseline/{fn}',
         'ER + Att': f'outputs/joint_attention/{fn}',
         'ER + AttR': f'outputs/joint_rollout/{fn}',
+        'ER + IxG': f'outputs/joint_ixg_norm/{fn}',
         'ER-C + Att': f'outputs/constrained_attention/{fn}',
         'ER-C + AttR': f'outputs/constrained_rollout/{fn}',
+        #'ER-C + IxG': f'outputs/constrained_ixg_norm/{fn}',
     }
 
     # Prepare dataframe
