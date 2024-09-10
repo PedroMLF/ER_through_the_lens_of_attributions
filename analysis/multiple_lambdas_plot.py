@@ -93,7 +93,7 @@ def build_df(full_results_path, full_losses_path, constrained_results_path, cons
     return df
 
 
-def plot_df_summarized(dfs, annotation_loss_bounds, dataset, title):
+def plot_df_summarized(dfs, annotation_loss_bounds, legend_labels, dataset, title, save_path):
 
     # Set plot style
     sns.reset_orig()
@@ -103,11 +103,10 @@ def plot_df_summarized(dfs, annotation_loss_bounds, dataset, title):
     sns.set(rc={"lines.linewidth": 1, "font.size": 120})
 
     markers = ['o', 's', '^', 'v', 'p', '*', 'P']
-    markers_edge_widths = [0.4, 1.0]
+    markers_edge_widths = [0.4, 1.0, 1.4]
     colorblind_palette = sns.color_palette("colorblind")
-    colors = [colorblind_palette[0], colorblind_palette[1]]
-    ecolors = [colorblind_palette[0], colorblind_palette[1]]
-    linestyles = ['-', '--']
+    colors = [colorblind_palette[0], colorblind_palette[1], colorblind_palette[2]]
+    linestyles = ['solid', 'dashed', 'dotted']
 
     assert len(colors) >= len(dfs)
 
@@ -140,7 +139,7 @@ def plot_df_summarized(dfs, annotation_loss_bounds, dataset, title):
                 markersize=10,
                 color=colors[df_ix],
                 ecolor=colors[df_ix],
-                elinewidth=1.5,
+                elinewidth=1.2,
                 label=f'λ = {lambdas[i]}',
                 alpha=0.8,
             )
@@ -149,14 +148,13 @@ def plot_df_summarized(dfs, annotation_loss_bounds, dataset, title):
         if 'Dev' in dataset:
             annotation_loss_mean = np.mean(annotation_loss_bounds[df_ix])
             annotation_loss_std = np.std(annotation_loss_bounds[df_ix])
-            ax.axvline(annotation_loss_mean, color=colors[df_ix], linestyle=linestyles[df_ix], linewidth=1.5, alpha=0.8)
+            ax.axvline(annotation_loss_mean, color=colors[df_ix], linestyle=linestyles[df_ix], linewidth=1.5, alpha=0.7)
             #ax.fill_betweenx([-1, 1], annotation_loss_mean - annotation_loss_std, annotation_loss_mean + annotation_loss_std, alpha=0.2, color='blue')
 
         ax.xaxis.set_major_locator(plt.MaxNLocator(5))
 
     # Create separate handles and labels for color and markers
-    color_handles = [plt.Line2D([0], [0], color=color, marker='o', markersize=10, markeredgecolor='k', markeredgewidth=markers_edge_widths[i], linestyle=linestyles[i], linewidth=1) for i, color in enumerate(colors)]
-    color_labels = ['ER + Att', 'ER + AttR']
+    color_handles = [plt.Line2D([0], [0], color=colors[i], marker='o', markersize=10, markeredgecolor='k', markeredgewidth=markers_edge_widths[i], linestyle=linestyles[i], linewidth=1) for i, _ in enumerate(dfs)]
     marker_handles = [plt.Line2D([0], [0], color='k', marker=marker, markersize=10, linestyle='None') for marker in markers]
     marker_labels = [f'λ = {lambdas[i]}' for i in range(len(xs))]
 
@@ -166,7 +164,7 @@ def plot_df_summarized(dfs, annotation_loss_bounds, dataset, title):
             marker_labels[i] = "Constrained"
 
     # Add legend with custom arrangement
-    ax.legend(handles=color_handles + marker_handles, labels=color_labels + marker_labels, loc='upper right', ncol=2)
+    ax.legend(handles=color_handles + marker_handles, labels=legend_labels + marker_labels, loc='upper right', ncol=2)
 
     #plt.legend(loc="upper right", ncol=2)
 
@@ -176,7 +174,6 @@ def plot_df_summarized(dfs, annotation_loss_bounds, dataset, title):
     ax.set_xlabel("Explanation Loss")
     ax.set_ylabel("CE Loss")
 
-    save_path = "figures/multiple_lambdas.pdf"
     print("Saving figure to: ", save_path)
     fig.savefig(save_path, dpi=500, bbox_inches='tight')
 
@@ -209,15 +206,37 @@ def main():
         datasets=['SST-Dev'],
     )
 
-    annotation_loss_bounds = {'ER-C-A': [0.031], 'ER-C-R': [0.031]}
+    df_ixg = build_df(
+        full_results_path = "outputs/multiple_lambdas/data_log_ixg.joblib",
+        full_losses_path = "outputs/multiple_lambdas/data_log_ixg_losses.joblib",
+        constrained_results_path = "outputs/constrained_ixg_norm/data_log_eval.joblib",
+        constrained_losses_path = "outputs/constrained_ixg_norm/data_log_eval_losses.joblib",
+        lambdas=lambdas,
+        num_seeds=num_seeds,
+        datasets=['SST-Dev'],
+    )
+
+    annotation_loss_bounds = {'ER-C-A': [0.031], 'ER-C-R': [0.031], 'ER-C-IxG': [0.35]}
 
     # Plot
-    print("Plotting ...")
+    print("Plotting Att and AttR ...")
     plot_df_summarized(
         [df_attention, df_rollout],
         [annotation_loss_bounds['ER-C-A'], annotation_loss_bounds['ER-C-R']],
+        legend_labels=['ER + Att', 'ER + AttR'],
         dataset='SST-Dev',
         title="SST-Dev",
+        save_path='figures/multiple_lambdas.pdf',
+    )
+
+    print("Plotting IxG ...")
+    plot_df_summarized(
+        [df_ixg],
+        [annotation_loss_bounds['ER-C-IxG']],
+        legend_labels=['ER + IxG'],
+        dataset='SST-Dev',
+        title="SST-Dev",
+        save_path='figures/multiple_lambdas_ixg.pdf',
     )
 
 if __name__ == "__main__":
