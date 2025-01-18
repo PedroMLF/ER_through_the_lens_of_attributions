@@ -55,7 +55,7 @@ do
     --constrained_optimization \
     --constrained_optimization_lr 5e-2 \
     --constrained_optimization_bound_init 0.035 \
-    --constrained_optimization_bound_min 0.023 \
+    --constrained_optimization_bound_min 0.000 \
     --constrained_optimization_validation_bound 0.031 \
     --constrained_optimization_smoothing 1.0 \
     --constrained_optimization_loss "guided"

@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --time=03:00:00
+#SBATCH --time=06:30:00
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=18
 #SBATCH --gpus=1
 
-#SBATCH -o outputs/constrained_rollout/log_train.out
+#SBATCH -o outputs/constrained_ixg_norm/log_train.out
 
 date '+[%H:%M:%S-%d/%m/%y]'
 
@@ -18,7 +18,7 @@ source ${PROJECT_HOME}/er_env/bin/activate
 MODEL_NAME="google/bigbird-roberta-base"
 BATCH_SIZE=32
 DATA_DIR=data/sa_data
-OUTPUT_DIR="checkpoints/constrained_rollout"
+OUTPUT_DIR="checkpoints/constrained_ixg_norm"
 EXPERIMENT_NAME="train"
 
 COUNT=0
@@ -34,7 +34,7 @@ do
     --train_batch_size ${BATCH_SIZE} \
     --eval_batch_size ${BATCH_SIZE} \
     --accumulate_grad_batches 1 \
-    --learning_rate 3e-5 \
+    --learning_rate 2e-5 \
     --weight_decay 0 \
     --gradient_clip_val 0 \
     --max_epochs 25 \
@@ -46,7 +46,7 @@ do
     --experiment_name ${EXPERIMENT_NAME} \
     --dataloader_num_workers 18 \
     --gpus 1 \
-    --attention_type "rollout_top_layer" \
+    --attention_type "IxG" \
     --attr_scaling 1 \
     --head_aggregation_method "mean" \
     --lambda_annotation_loss 1.0 \
@@ -54,9 +54,9 @@ do
     --log_every_n_steps 50 \
     --constrained_optimization \
     --constrained_optimization_lr 1e-1 \
-    --constrained_optimization_bound_init 0.03 \
+    --constrained_optimization_bound_init 0.35 \
     --constrained_optimization_bound_min 0.00 \
-    --constrained_optimization_validation_bound 0.031 \
+    --constrained_optimization_validation_bound 0.35 \
     --constrained_optimization_smoothing 1.0 \
     --constrained_optimization_loss "guided"
 
