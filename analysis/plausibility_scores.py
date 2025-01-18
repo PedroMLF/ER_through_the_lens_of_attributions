@@ -16,10 +16,13 @@ approach2str = {
     'BS': 'Baseline',
     'ER-A': 'ER + Att',
     'ER-R': 'ER + AttR',
+    'ER-IxG': 'ER + IxG',
     'ER-C-A': 'ER-C + Att',
     'ER-C-R': 'ER-C + AttR',
+    'ER-C-IxG': 'ER-C + IxG',
     'L-EXP_A': 'L_expl (Att)',
     'L-EXP_R': 'L_expl (AttR)',
+    'L-EXP_IxG': 'L_expl (IxG)',
 }
 
 def main(data_path, metrics, techniques, print_std):

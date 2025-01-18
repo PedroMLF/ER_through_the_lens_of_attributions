@@ -18,8 +18,10 @@ approach_to_str_map = {
     'BS': 'BS',
     'ER-A': 'ER + Att',
     'ER-R': 'ER + AttR',
+    'ER-IxG': 'ER + IxG',
     'ER-C-A': 'ER-C + Att',
     'ER-C-R': 'ER-C + AttR',
+    'ER-C-IxG': 'ER-C + IxG',
 }
 
 plot_kwargs = {'alpha': 0.8, 's': 70, 'edgecolor': 'k', 'linewidth': 1}
@@ -69,14 +71,18 @@ def prepare_df(results, plausibility_scores):
     return df
 
 
-def plot_df(df, x, xlabel, figsize, bbox_to_anchor, save_name, add_legend=True):
+def plot_df(df, x, xlabel, ylabel, figsize, bbox_to_anchor, save_name, add_legend=True):
     sns.set(font_scale=1)
     sns.set_style("darkgrid")
 
-    fig, ax = plt.subplots(1, len(df['Dataset'].unique()), figsize=figsize, dpi=125, sharex=False, sharey=False)
+    num_cols = len(df['Dataset'].unique())
+    fig, ax = plt.subplots(1, num_cols, figsize=figsize, dpi=125, sharex=False, sharey=False)
 
     for ix, dataset in enumerate(df['Dataset'].unique()):
-        ax_to_plot = ax[ix]
+        if num_cols > 1:
+            ax_to_plot = ax[ix]
+        else:
+            ax_to_plot = ax
         sns.scatterplot(
             df[(df['Dataset'] == dataset)],
             x=x,
@@ -88,7 +94,7 @@ def plot_df(df, x, xlabel, figsize, bbox_to_anchor, save_name, add_legend=True):
             **plot_kwargs,
         )
 
-        ax_to_plot.set(xlabel=xlabel, ylabel='OOD F1-Macro', title=dataset)
+        ax_to_plot.set(xlabel=xlabel, ylabel=ylabel, title=dataset)
 
         if ix != 0:
             ax_to_plot.set_ylabel('')
@@ -135,8 +141,10 @@ def main():
         'BS': f'outputs/baseline/{fn}',
         'ER-A': f'outputs/joint_attention/{fn}',
         'ER-R': f'outputs/joint_rollout/{fn}',
+        'ER-IxG': f'outputs/joint_ixg_norm/{fn}',
         'ER-C-A': f'outputs/constrained_attention/{fn}',
         'ER-C-R': f'outputs/constrained_rollout/{fn}',
+        'ER-C-IxG': f'outputs/constrained_ixg_norm/{fn}',
     }
 
     results = {k: joblib.load(v) for k, v in results_paths.items()}
@@ -152,10 +160,12 @@ def main():
 
     # Predictor: In-Domain Classification F1-Macro for SST-Test and Movies
     plot_df(
-        df[(df['Dataset'].isin(['SST-Test', 'MOVIES'])) & (df['Approach'].isin(['BS', 'ER-C + Att', 'ER-C + AttR']))],
+        df[(df['Dataset'].isin(['MOVIES'])) & (df['Approach'].isin(['BS', 'ER-C + Att', 'ER-C + AttR', 'ER-C + IxG']))],
         x='ID_Value',
         xlabel='ID F1-Macro',
-        figsize=(8,4),
+        ylabel='OOD F1-Macro',
+        # Use x = num_datasets * 4
+        figsize=(4,4),
         bbox_to_anchor=(-0.1,-0.4),
         add_legend=False,
         save_name="sa-ood-prediction-cls",
@@ -163,10 +173,12 @@ def main():
 
     # Predictor: In-Domain Plausibility with AUC + DecompX-Classifier for SST-Test and Movies
     plot_df(
-        df[(df['Dataset'].isin(['SST-Test', 'MOVIES'])) & (df['Approach'].isin(['BS', 'ER-C + Att', 'ER-C + AttR']))],
+        df[(df['Dataset'].isin(['MOVIES'])) & (df['Approach'].isin(['BS', 'ER-C + Att', 'ER-C + AttR', 'ER-C + IxG']))],
         x='ID_Plaus',
         xlabel='ID Plausibility AUC',
-        figsize=(8,4),
+        ylabel=' ',
+        # Use x = num_datasets * 4
+        figsize=(4,4),
         bbox_to_anchor=(-0.15,-0.4),
         add_legend=False,
         save_name="sa-ood-prediction-auc",
@@ -177,6 +189,7 @@ def main():
         df,#[~(df['Dataset'].isin(['YELP-50']))],
         x='ID_Value',
         xlabel='ID F1-Macro',
+        ylabel='OOD F1-Macro',
         figsize=(24,4),
         bbox_to_anchor=(-1.8,-0.4),
         add_legend=False,
@@ -190,6 +203,7 @@ def main():
         df,
         x='ID_Plaus',
         xlabel='ID Plausibility AUC',
+        ylabel='OOD F1-Macro',
         figsize=(24,4),
         bbox_to_anchor=(-1.8,-0.4),
         add_legend=False,
@@ -203,6 +217,7 @@ def main():
         df,
         x='ID_Plaus',
         xlabel='ID Plausibility AUC',
+        ylabel='OOD F1-Macro',
         figsize=(24,4),
         bbox_to_anchor=(-1.8,-0.4),
         add_legend=False,
@@ -216,6 +231,7 @@ def main():
         df,
         x='ID_Plaus',
         xlabel='ID Plausibility AUC',
+        ylabel='OOD F1-Macro',
         figsize=(24,4),
         bbox_to_anchor=(-1.8,-0.4),
         add_legend=False,
@@ -229,6 +245,7 @@ def main():
         df,
         x='ID_Plaus',
         xlabel='ID Plausibility AP',
+        ylabel='OOD F1-Macro',
         figsize=(24,4),
         bbox_to_anchor=(-1.8,-0.4),
         add_legend=False,
@@ -242,10 +259,11 @@ def main():
         df,
         x='ID_Plaus',
         xlabel='ID Plausibility R@k',
+        ylabel='OOD F1-Macro',
         figsize=(24,4),
-        bbox_to_anchor=(-1.8,-0.4),
+        bbox_to_anchor=(-2.5,-0.4),
         add_legend=True,
-        save_name="sa-ood-prediction-full-r@k-dxc",
+        save_name="sa-ood-prediction-full-rk-dxc",
     )
 
     # Finally, plot with OOD Plausibility predictors (using IxG), for OOD classification performance
@@ -262,7 +280,7 @@ def main():
 
     ax_to_plot = ax[0]
     sns.scatterplot(
-        df[(df['Dataset'] == 'MOVIES') & (df['Approach'].isin(['BS', 'ER-C + Att', 'ER-C + AttR']))],
+        df[(df['Dataset'] == 'MOVIES') & (df['Approach'].isin(['BS', 'ER-C + Att', 'ER-C + AttR', 'ER-C + IxG']))],
         x='OOD_Plaus',
         y='OOD_Value',
         style='Approach',
@@ -281,7 +299,7 @@ def main():
 
     ax_to_plot = ax[1]
     sns.scatterplot(
-        df[(df['Dataset'] == 'YELP-50') & (df['Approach'].isin(['BS', 'ER-C + Att', 'ER-C + AttR']))],
+        df[(df['Dataset'] == 'YELP-50') & (df['Approach'].isin(['BS', 'ER-C + Att', 'ER-C + AttR', 'ER-C + IxG']))],
         x='OOD_Plaus',
         y='OOD_Value',
         style='Approach',
@@ -294,12 +312,13 @@ def main():
     ax_to_plot.set(xlabel='OOD Plausibility AUC', ylabel='', title='YELP-50')
     ax_to_plot.legend_.remove()
 
-    plt.legend(title='Approach', bbox_to_anchor=(-0.08,-0.4), ncols=len(df['Approach'].unique()), loc='lower center', frameon=False)
+    plt.legend(title='Approach', bbox_to_anchor=(-0.12,-0.4), ncols=len(df['Approach'].unique()), loc='lower center', frameon=False)
     for legend_handle in ax_to_plot.legend_.legendHandles:
         legend_handle.set_edgecolor('black')
         legend_handle.set_linewidth(0.6)
 
     plt.savefig("figures/sa-ood-prediction-ood-auc.pdf", dpi=500, bbox_inches='tight')
+
 
 if __name__ == "__main__":
     if not os.path.exists("figures"):

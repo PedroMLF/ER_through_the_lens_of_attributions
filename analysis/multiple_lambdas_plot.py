@@ -110,7 +110,7 @@ def plot_df_summarized(dfs, annotation_loss_bounds, legend_labels, dataset, titl
 
     assert len(colors) >= len(dfs)
 
-    fig, ax = plt.subplots(dpi=150)
+    fig, ax = plt.subplots(figsize=(6,3), dpi=150)
 
     for df_ix, df in enumerate(dfs):
 
@@ -169,7 +169,7 @@ def plot_df_summarized(dfs, annotation_loss_bounds, legend_labels, dataset, titl
     #plt.legend(loc="upper right", ncol=2)
 
     # Set axis labels
-    ax.set_title(title)
+    #ax.set_title(title)
     
     ax.set_xlabel("Explanation Loss")
     ax.set_ylabel("CE Loss")
@@ -226,7 +226,7 @@ def main():
         legend_labels=['ER + Att', 'ER + AttR'],
         dataset='SST-Dev',
         title="SST-Dev",
-        save_path='figures/multiple_lambdas.pdf',
+        save_path='figures/sa-id-multiple-lambdas_sst-dev.pdf',
     )
 
     print("Plotting IxG ...")
@@ -236,7 +236,7 @@ def main():
         legend_labels=['ER + IxG'],
         dataset='SST-Dev',
         title="SST-Dev",
-        save_path='figures/multiple_lambdas_ixg.pdf',
+        save_path='figures/sa-id-multiple-lambdas-ixg.pdf',
     )
 
 if __name__ == "__main__":

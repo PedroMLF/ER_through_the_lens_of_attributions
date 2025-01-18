@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=03:30:00
+#SBATCH --time=01:30:00
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -16,9 +16,5 @@ PROJECT_HOME=${PWD}
 source ${PROJECT_HOME}/er_env/bin/activate
 
 python ${PROJECT_HOME}/suff_comp_metrics_compute.py --path checkpoints/baseline/train/ --pred_filename pred_sst_dev_data --batch_size 512
-python ${PROJECT_HOME}/suff_comp_metrics_compute.py --path checkpoints/joint_attention/train/ --pred_filename pred_sst_dev_data --batch_size 512
-python ${PROJECT_HOME}/suff_comp_metrics_compute.py --path checkpoints/joint_rollout/train/ --pred_filename pred_sst_dev_data --batch_size 512
-python ${PROJECT_HOME}/suff_comp_metrics_compute.py --path checkpoints/constrained_attention/train/ --pred_filename pred_sst_dev_data --batch_size 512
-python ${PROJECT_HOME}/suff_comp_metrics_compute.py --path checkpoints/constrained_rollout/train/ --pred_filename pred_sst_dev_data --batch_size 512
 
 date '+[%H:%M:%S-%d/%m/%y]'
