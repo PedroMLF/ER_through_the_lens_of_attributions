@@ -1,6 +1,6 @@
 # Explanation Regularisation through the Lens of Attributions
 
-- [Paper](https://arxiv.org/abs/2407.16693)
+- [COLING 2025 Paper](https://aclanthology.org/2025.coling-main.436/)
 
 ### 1. Setup
 
@@ -39,8 +39,8 @@ sbatch scripts/constrained_ixg/find_bound.sh
 - This is a manual step:
     - Open Tensorboard for the `find_bound` runs.
     - Find the necessary values:
-        - For `bound train`, use (...) half of the average of the initial `loss_annotation` value (rounded).
-        - For `bound validation`, use the average minimum of `val_avg_loss annotation` (rounded).
+        - For `bound train`, use approximately 1.5 times the average minimum of `loss_annotation` value (rounded).
+        - For `bound validation`, use approximately the average minimum of `val_avg_loss annotation` (rounded).
 
 - Constrained Attention:
     - `loss_annotation`:
@@ -49,11 +49,11 @@ sbatch scripts/constrained_ixg/find_bound.sh
     - `loss_annotation` (minimum):
         - [0.01929, 0.02287, 0.02437]
         - Mean: 0.02218
-        - Bound Train: 0.035
     - `val_avg_loss annotation`:
         - [0.03037, 0.02989, 0.03027]
         - Mean: 0.03018
-        - Bound Validation: 0.031
+    - `Bound Train`: 0.035
+    - `Bound Validation`: 0.031
 
 - Constrained Rollout:
     - `loss_annotation`:
@@ -62,11 +62,11 @@ sbatch scripts/constrained_ixg/find_bound.sh
     - `loss_annotation` (minimum):
         - [0.02142, 0.0211, 0.02236]
         - Mean: 0.02163
-        - Bound Train: 0.030
     - `val_avg_loss annotation`:
         - [0.03163, 0.03158, 0.03164]
         - Mean: 0.03162
-        - Bound Validation: 0.031
+    - `Bound Train`: 0.030
+    - `Bound Validation`: 0.031
 
 - Constrained IxG:
     - `loss_annotation`:
@@ -75,11 +75,11 @@ sbatch scripts/constrained_ixg/find_bound.sh
     - `loss_annotation` (minimum):
         - [0.2282, 0.2412, 0.2428]
         - Mean: 0.237
-        - Bound Train: 0.35
     - `val_avg_loss annotation`:
         - [0.35, 0.349, 0.349]
         - Mean: 0.349
-        - Bound Validation: 0.35
+    - `Bound Train`: 0.35
+    - `Bound Validation`: 0.35
 
 ### 5. Run HParam search for Constrained experiments
 
@@ -225,9 +225,9 @@ python analysis/plot_auc_per_layer.py
 - Figure 3 + Figure 9 + Figure 10:
 
 ```
-python compute_correlations.py all_analysis_data_pred_sst-dev_data.joblib sst_dev kendall
-python compute_correlations.py all_analysis_data_pred_movies_dev-test_data.joblib movies kendall
-python compute_correlations.py all_analysis_data_pred_yelp-50_data.joblib yelp-50 kendall
+python analysis/compute_correlations.py all_analysis_data_pred_sst_dev_data.joblib sst_dev kendall
+python analysis/compute_correlations.py all_analysis_data_pred_movies_dev-test_data.joblib movies kendall
+python analysis/compute_correlations.py all_analysis_data_pred_yelp-50_data.joblib yelp-50 kendall
 correlations.ipynb
 ```
 
