@@ -103,7 +103,7 @@ def main(path, dataset_prefix, corr_fn):
                     technique_2=aux_technique,
                     corr_fn=corr_fn,
                     # If we are comparing attributions for the same approach, I want to compare the same model version
-                    fixed_version=True,
+                    fixed_version=False,
                 )
                 print(f"{np.mean(corrs):.2f} +- {np.std(corrs):.2f}")
                 all_corrs['approaches'][approach][technique][aux_technique] = corrs
